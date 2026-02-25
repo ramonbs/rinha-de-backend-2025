@@ -1,0 +1,109 @@
+services:
+  payment-proxy-leader:
+    build: .
+    hostname: payment-proxy-leader
+    networks:
+      - backend
+      - payment-processor
+    environment:
+      - INSTANCE_TYPE=LEADER
+      - PAYMENT_PROXY_FOLLOWER_URL=http://payment-proxy-follower:3000
+      - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
+      - PROCESS_BATCH_INTERVAL=150
+      - MAX_BATCH_SIZE=100
+      - CHECK_PROCESSORS_STATUS_INTERVAL=5005
+      - REDIS_URL=redis:6379
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: "60MB"
+    depends_on:
+      redis:
+        condition: service_healthy
+      payment-proxy-follower:
+        condition: service_started
+
+  payment-proxy-follower:
+    build: .
+    hostname: payment-proxy-follower
+    networks:
+      - backend
+      - payment-processor
+    environment:
+      - INSTANCE_TYPE=FOLLOWER
+      - PAYMENT_PROCESSOR_URL_DEFAULT=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_URL_FALLBACK=http://payment-processor-fallback:8080
+      - PROCESS_BATCH_INTERVAL=150
+      - MAX_BATCH_SIZE=100
+      - CHECK_PROCESSORS_STATUS_INTERVAL=5005
+      - REDIS_URL=redis:6379
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: "60MB"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  payment-worker:
+    build: .
+    hostname: payment-worker
+    command: ["bun", "run", "start:worker"]
+    networks:
+      - backend
+      - payment-processor
+    environment:
+      - REDIS_URL=redis:6379
+      - PAYMENT_PROCESSOR_DEFAULT_URL=http://payment-processor-default:8080
+      - PAYMENT_PROCESSOR_FALLBACK_URL=http://payment-processor-fallback:8080
+    deploy:
+      resources:
+        limits:
+          cpus: "0.55"
+          memory: "110MB"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    hostname: redis
+    command: redis-server --save "" --appendonly no --maxclients 20000 --maxmemory 30mb --maxmemory-policy noeviction --loglevel warning
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: "50MB"
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9999:9999"
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: "20MB"
+    depends_on:
+      - payment-proxy-leader
+      - payment-proxy-follower
+
+networks:
+  backend:
+    driver: bridge
+  payment-processor:
+    external: true
