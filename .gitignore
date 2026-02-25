@@ -1,5 +1,8 @@
-# dependencies (bun install)
+# dependencies (bun)
 node_modules
+
+# dependencies (rust)
+target
 
 # output
 out

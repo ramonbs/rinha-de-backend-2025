@@ -1,80 +1,37 @@
 # Rinha de Backend 2025 - ramonbs
 
-Projeto feito por diversão para a [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025). Backend que intermedia pagamentos entre dois processadores com circuit breaker e fallback automatico.
+Projeto feito por diversao para a [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025). Duas implementacoes do mesmo backend: uma em Bun/TypeScript e outra em Rust.
 
-## Stack
-
-- **Runtime**: Bun
-- **Linguagem**: TypeScript
-- **Fila**: BullMQ (Redis)
-- **Circuit Breaker**: Opossum
-- **HTTP Client**: Undici (connection pooling com HTTP/2)
-- **Load Balancer**: Nginx
-- **Cache/Store**: Redis 7
-
-## Arquitetura
+## Estrutura
 
 ```
-                    nginx:9999 (load balancer)
-                       |
-            +----------+----------+
-            |                     |
-   proxy-leader:3000     proxy-follower:3000
-            |                     |
-            +----------+----------+
-                       |
-                  redis:6379 (fila BullMQ + metricas)
-                       |
-                 payment-worker
-                       |
-            +----------+----------+
-            |                     |
-   processor-default:8080  processor-fallback:8080
-   (taxa menor, prioridade)  (fallback automatico)
+/
+  bun/                -- implementacao em Bun + TypeScript
+  rust/               -- implementacao em Rust (em desenvolvimento)
+  payment-processor/  -- servicos de processamento (compartilhado)
+  rinha-test/         -- testes de carga k6 (compartilhado)
 ```
 
-## Endpoints
+## Implementacoes
 
-| Metodo | Rota                | Descricao                          |
-|--------|---------------------|------------------------------------|
-| POST   | /payments           | Enfileira pagamento (retorna 202)  |
-| GET    | /payments-summary   | Resumo por processador com filtro  |
-| POST   | /purge-payments     | Limpa dados de pagamentos no Redis |
-| GET    | /health             | Health check                       |
+### Bun (TypeScript)
 
-## Estrutura do projeto
+Stack: Bun, BullMQ, Opossum (circuit breaker), Undici, Nginx, Redis 7.
 
-```
-api/src/
-  config/redis.ts          -- conexao Redis
-  types/index.ts           -- tipos de dominio
-  queue/paymentQueue.ts    -- configuracao BullMQ
-  services/paymentService.ts -- logica de consulta e purge
-  controllers/paymentController.ts -- handlers HTTP
-  routes/index.ts          -- roteamento
-  index.ts                 -- entrypoint Bun.serve()
-  worker/index.ts          -- consumer da fila com circuit breaker
-```
+Detalhes em `bun/`.
 
-## Recursos (Docker Compose)
+### Rust
 
-| Servico          | CPU   | Memoria |
-|------------------|-------|---------|
-| proxy-leader     | 0.30  | 60MB    |
-| proxy-follower   | 0.30  | 60MB    |
-| payment-worker   | 0.55  | 110MB   |
-| redis            | 0.20  | 50MB    |
-| nginx            | 0.15  | 20MB    |
-| **Total**        | **1.50** | **300MB** |
+Em desenvolvimento.
 
 ## Executar localmente
 
 ```bash
-# Subir payment processors primeiro
+# Subir payment processors
 docker compose -f payment-processor/docker-compose-arm64.yml up -d
 
-# Subir o backend
-docker compose up -d
+# Subir o backend (bun)
+docker compose -f bun/docker-compose.yml up -d
 ```
 
 API disponivel em `http://localhost:9999`.
