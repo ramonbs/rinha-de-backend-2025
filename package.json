@@ -1,0 +1,24 @@
+{
+  "name": "node-rinha-2025",
+  "module": "index.ts",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "private": true,
+  "scripts": {
+    "start": "bun run api/src/index.ts",
+    "start:worker": "bun run api/src/worker/index.ts",
+    "test:k6": "bash test.sh"
+  },
+  "type": "module",
+  "dependencies": {
+    "@types/opossum": "^8.1.9",
+    "bullmq": "^5.70.1",
+    "ioredis": "^5.9.2",
+    "opossum": "^9.0.0",
+    "undici": "^7.22.0"
+  }
+}
