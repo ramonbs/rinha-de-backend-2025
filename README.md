@@ -15,17 +15,22 @@ Projeto feito por diversão para a [Rinha de Backend 2025](https://github.com/za
 ## Arquitetura
 
 ```
-nginx:9999 (load balancer)
-  |
-  +-- payment-proxy-leader:3000  (API - recebe pagamentos e enfileira)
-  +-- payment-proxy-follower:3000 (API - replica)
-  |
-  +-- payment-worker (consome fila, processa via circuit breaker)
-  |     |
-  |     +-- payment-processor-default:8080  (taxa menor, prioridade)
-  |     +-- payment-processor-fallback:8080 (fallback automatico)
-  |
-  +-- redis:6379 (fila BullMQ + armazenamento de metricas)
+                    nginx:9999 (load balancer)
+                       |
+            +----------+----------+
+            |                     |
+   proxy-leader:3000     proxy-follower:3000
+            |                     |
+            +----------+----------+
+                       |
+                  redis:6379 (fila BullMQ + metricas)
+                       |
+                 payment-worker
+                       |
+            +----------+----------+
+            |                     |
+   processor-default:8080  processor-fallback:8080
+   (taxa menor, prioridade)  (fallback automatico)
 ```
 
 ## Endpoints
